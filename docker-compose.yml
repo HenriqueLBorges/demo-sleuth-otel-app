@@ -1,0 +1,49 @@
+version: "3.9"
+services:
+
+  jaeger:
+   container_name: jaeger
+   hostname: jaeger
+   image: jaegertracing/all-in-one:latest
+   ports:
+     - "16686:16686"
+     - "14268"
+     - "14250"
+   networks:
+      - demo-sleuth-otel-network
+  
+  collector:
+   container_name: collector
+   hostname: collector
+   image: ghcr.io/open-telemetry/opentelemetry-collector-releases/opentelemetry-collector-contrib:0.51.0
+   volumes:
+     - ./collector.yaml:/etc/collector.yaml
+   command: [ "--config=/etc/collector.yaml" ]
+   ports:
+     - "4317:4317"        # OTLP gRPC receiver
+     - "4318:4318"        # OTLP HTTP receiver
+   depends_on:
+     - jaeger
+   networks:
+      - demo-sleuth-otel-network
+
+  demo-sleuth-otel:
+    container_name: demo-sleuth-otel-app
+    hostname: demo-sleuth-otel-app
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: demo-otel:latest
+    ports:
+      - "18888:8080"
+    healthcheck:
+      test: curl -m 5 --silent --fail --request GET http://demo-sleuth-otel-app:8080/actuator/health/liveness | jq --exit-status -n 'inputs | if has("status") then .status=="UP" else false end' > /dev/null || exit 1
+      interval: 10s
+      timeout: 2s
+      retries: 10
+    networks:
+      - demo-sleuth-otel-network
+
+networks:
+  demo-sleuth-otel-network:
+    driver: bridge

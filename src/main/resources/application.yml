@@ -1,0 +1,15 @@
+spring:
+  application:
+    name: demo-sleuth-otel-app
+  sleuth:
+    baggage:
+      remote-fields: request-id
+      local-fields: device-id
+      correlation-fields: request-id,device-id
+      tag-fields: request-id,device-id
+    otel:
+      exporter:
+        otlp:
+          endpoint: http://collector:4317
+      config:
+        trace-id-ratio-based: 1.0
